@@ -23,8 +23,14 @@ module Repo =
     /// Creates a new Commit.
     let commit x y = Commit(rect x y 8 8)
 
-    /// Creates a new Branch with a specified Commit at the head.
-    let branch head = { Commits = [head] }
+    /// Creates a new Branch with 56 commits trailing from a specified head.
+    let branch head = 
+        let commits (Commit x) = 
+            seq { 
+                for i in 0 .. 55 do 
+                    yield commit (x.X - (10 * i)) x.Y 
+            } |> List.ofSeq
+        { Commits = commits head }            
 
     /// Initializes a new Repository at a specified set of coordinates.
     let init x y = {

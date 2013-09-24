@@ -18,7 +18,7 @@ type forkit() as this =
     let mutable tile = Unchecked.defaultof<_>
 
     let mutable gamestate = {
-        Repo = Repo.init 100 100
+        Repo = Repo.init 550 325
     }
 
     let textures _ =
