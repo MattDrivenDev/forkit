@@ -7,9 +7,8 @@ open Microsoft.Xna.Framework.Graphics
 module Xna = 
 
     let private randomizer = new Random()
-
-    let random min max = 
-        randomizer.Next(min, max)
+    /// Picks a new random number between a clamped min/max.
+    let random min max = randomizer.Next(min, max)
 
     /// Functional wrapper over the Microsoft.Xna.Framework.Rectangle constructor.
     let rect x y width height = new Rectangle(x, y, width, height)

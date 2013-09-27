@@ -33,9 +33,6 @@ type forkit() as this =
     let endSpriteBatch spritebatch _ =
         SpriteBatch.stop spritebatch
 
-    let pulseRepo gametime = 
-        gamestate <- { gamestate with Repo = Repo.pulseRepo gamestate.Repo gametime }
-
     let moveRepo gametime = 
         gamestate <- { gamestate with Repo = Repo.moveRepo gamestate.Repo gametime }
 

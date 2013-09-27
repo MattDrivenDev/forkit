@@ -8,7 +8,7 @@ type Commit =
     | GrowingCommit of Point
     | BigCommit of Point
     | ShrinkingCommit of Point
-    | LittleCommit of Point
+    | SmallCommit of Point
 
 /// Commits exist within a branch.
 type Branch = {
@@ -24,29 +24,27 @@ type Repository = {
 [<RequireQualifiedAccess>]
 module Repo =     
 
+    /// Creates a new commit in the 'growing' state.
     let growingCommit x y = GrowingCommit(point x y)
-
+    
+    /// Creates a new commit in the 'big' state.
     let bigCommit x y = BigCommit(point x y)
-
+    
+    /// Creates a new commit in the 'shrinking' state.
     let shrinkingCommit x y = ShrinkingCommit(point x y)
+    
+    /// Creates a new commit in the 'small' state.
+    let smallCommit x y = SmallCommit(point x y)
 
-    let littleCommit x y = LittleCommit(point x y)
-
-    /// Creates a new Branch with 56 commits trailing from a specified head.
+    /// Creates a new branch from a seeding commit.
     let branch seed position =         
-        let commits (p:Point) = 
-            seq { 
-                for i in seed .. seed + 55 do 
-                    if i % 4 = 1 then 
-                        yield growingCommit (p.X - (11 * (i - seed))) p.Y, 0.0
-                    else if i % 4 = 2 then 
-                        yield bigCommit (p.X - (11 * (i - seed))) p.Y, 0.0
-                    else if i % 4 = 3 then 
-                        yield shrinkingCommit (p.X - (11 * (i - seed))) p.Y, 0.0
-                    else if i % 4 = 0 then 
-                        yield littleCommit (p.X - (11 * (i - seed))) p.Y, 0.0
-            } |> List.ofSeq
-        { Commits = commits position }
+        let commit (p:Point) = 
+            match seed % 4 with
+            | 1 -> growingCommit p.X p.Y, 0.0 
+            | 2 -> bigCommit p.X p.Y, 0.0
+            | 3 -> shrinkingCommit p.X p.Y, 0.0
+            | 0 -> smallCommit p.X p.Y, 0.0
+        { Commits = [commit position] }
 
     /// Initializes a new Repository at a specified set of coordinates.
     let init x y = {
@@ -63,54 +61,31 @@ module Repo =
               branch 0 (point x (y + 99)) ]
     }
 
-    let pulseCommit (gametime:GameTime) (commit, time) = 
-        
-        let timesofar = time + (gametime.ElapsedGameTime.TotalMilliseconds)
-        
-        match commit with
-        | GrowingCommit p ->
-            if timesofar > 75.0 
-                then bigCommit p.X p.Y, 0.0
-                else commit, timesofar
-        | BigCommit p ->
-            if timesofar > 75.0
-                then shrinkingCommit p.X p.Y, 0.0
-                else commit, timesofar
-        | ShrinkingCommit p ->
-            if timesofar > 75.0
-                then littleCommit p.X p.Y, 0.0
-                else commit, timesofar                
-        | LittleCommit p ->
-            if timesofar > 75.0
-                then growingCommit p.X p.Y, 0.0
-                else commit, timesofar
-
-    let pulseBranch gametime branch = 
-        { branch with Commits = List.map (pulseCommit gametime) branch.Commits }
-
-    let pulseRepo repo gametime = 
-        { repo with Branches = List.map (pulseBranch gametime) repo.Branches }
-
+    /// Move's a commit off to the left.
+    /// TODO: Needs some refactoring, lets move this matching and time counting out.
     let moveCommit (gametime:GameTime) (commit, time) =
         let timesofar = time + (gametime.ElapsedGameTime.TotalMilliseconds)
         match commit with
         | GrowingCommit p -> 
             if timesofar > 75.0
-                then growingCommit (p.X - 11) p.Y, 0.0
+                then growingCommit (p.X - 9) p.Y, 0.0
                 else commit, timesofar
         | BigCommit p -> 
             if timesofar > 75.0
-                then bigCommit (p.X - 11) p.Y, 0.0
+                then bigCommit (p.X - 9) p.Y, 0.0
                 else commit, timesofar
         | ShrinkingCommit p ->
             if timesofar > 75.0
-                then shrinkingCommit (p.X - 11) p.Y, 0.0
+                then shrinkingCommit (p.X - 9) p.Y, 0.0
                 else commit, timesofar
-        | LittleCommit p ->
+        | SmallCommit p ->
             if timesofar > 75.0
-                then littleCommit (p.X - 11) p.Y, 0.0
+                then smallCommit (p.X - 9) p.Y, 0.0
                 else commit, timesofar 
-                
+          
+    /// Pushes a new commit onto each of the branches at the head. Each new
+    /// commit pushed is a different size to try and get a ripple effect.
+    /// TODO: Needs some refactoring, lets move this matching and time counting out.
     let push (gametime:GameTime) commits =  
         let timesofar time = time + (gametime.ElapsedGameTime.TotalMilliseconds)       
         match List.head commits with
@@ -124,19 +99,21 @@ module Repo =
                 else List.map(fun (c, _) -> c, timesofar t) commits
         | ShrinkingCommit p, t ->
             if timesofar t > 75.0
-                then (littleCommit (p.X + 7) p.Y, 0.0) :: commits
+                then (smallCommit (p.X + 7) p.Y, 0.0) :: commits
                 else List.map(fun (c, _) -> c, timesofar t) commits
-        | LittleCommit p, t ->
+        | SmallCommit p, t ->
             if timesofar t > 75.0
                 then (growingCommit (p.X + 9) p.Y, 0.0) :: commits
                 else List.map(fun (c, _) -> c, timesofar t) commits
 
+    /// Moves all the commits on a branch and pushes a new one onto the head.
     let moveBranch gametime branch = 
         let commits = 
             List.map (moveCommit gametime) branch.Commits
             |> (push gametime)
         { branch with Commits = commits }
-        
+      
+    /// Moves all the branches in a repo.  
     let moveRepo repo gametime = 
         { repo with Branches = List.map (moveBranch gametime) repo.Branches }
 
@@ -153,7 +130,7 @@ module Repo =
             drawone (rect (p.X - 1) (p.Y - 1) 10 10) (Color.GreenYellow * float32 1.25)
         | ShrinkingCommit p ->            
             drawone (rect (p.X) (p.Y) 8 8) (Color.GreenYellow * float32 1.00)
-        | LittleCommit p ->            
+        | SmallCommit p ->            
             drawone (rect (p.X + 1) (p.Y + 1) 6 6) (Color.GreenYellow * float32 0.75)
 
     /// Draw a single branch to a spritebatch.
