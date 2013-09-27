@@ -26,7 +26,15 @@ type FsGame(contentRoot, configureGraphics) as this =
     /// Creates the spritebatch and then iterates through and invokes each of the 'LoadContentSteps'.
     override this.LoadContent() = 
         spritebatch <- new SpriteBatch(graphics.GraphicsDevice)
-        List.iter(fun f -> f()) this.LoadContentSteps
+        Seq.iter(fun f -> f()) this.LoadContentSteps
+
+    abstract UpdateSteps : (GameTime -> unit) list
+
+    override this.Update(gametime) = 
+        this.UpdateSteps
+        |> Seq.iter(fun f ->
+            f gametime
+        )
 
     /// Ordered list of functions to run during each Draw phase of the game loop.
     abstract DrawSteps : (SpriteBatch -> GameTime -> unit) list
@@ -34,6 +42,6 @@ type FsGame(contentRoot, configureGraphics) as this =
     /// Iterates through and invokes each of the 'DrawSteps'.
     override this.Draw(gametime) =
         this.DrawSteps 
-        |> List.iter(fun f ->
+        |> Seq.iter(fun f ->
             f spritebatch gametime
         )

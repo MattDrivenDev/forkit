@@ -33,11 +33,20 @@ type forkit() as this =
     let endSpriteBatch spritebatch _ =
         SpriteBatch.stop spritebatch
 
+    let pulseRepo gametime = 
+        gamestate <- { gamestate with Repo = Repo.pulseRepo gamestate.Repo gametime }
+
+    let moveRepo gametime = 
+        gamestate <- { gamestate with Repo = Repo.moveRepo gamestate.Repo gametime }
+
     let drawRepo spritebatch gametime = 
-        Repo.draw spritebatch tile gamestate.Repo
+        Repo.draw spritebatch gametime tile gamestate.Repo
 
     override this.LoadContentSteps = 
         [ textures ]
+
+    override this.UpdateSteps = 
+        [ moveRepo ]
 
     override this.DrawSteps = 
         [ blackBackground
