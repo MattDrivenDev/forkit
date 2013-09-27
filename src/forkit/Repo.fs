@@ -70,10 +70,17 @@ module Repo =
         | ShrinkingCommit p -> (p, shrinkingCommit)
         | SmallCommit p -> (p, smallCommit)
 
+    /// Deconstructs a commit to get the point
+    let revert commit =
+        let r, f = revertWithRecommit commit 
+        r        
+
     /// Move's a commit off to the left.
     /// TODO: Needs some refactoring, lets move this matching and time counting out.
     let moveCommit (gametime:GameTime) (commit, time) =
+
         let timesofar = time + (gametime.ElapsedGameTime.TotalMilliseconds)
+
         if timesofar > 75.0 then 
             let point, f = revertWithRecommit commit
             f (point.X - 9) point.Y, 0.0
@@ -83,8 +90,9 @@ module Repo =
     /// Pushes a new commit onto each of the branches at the head. Each new
     /// commit pushed is a different size to try and get a ripple effect.
     /// TODO: Needs some refactoring, lets move this matching and time counting out.
-    let push (gametime:GameTime) commits =  
-        let timesofar time = time + (gametime.ElapsedGameTime.TotalMilliseconds)       
+    let push (gametime:GameTime) commits =      
+        let timesofar time = time + (gametime.ElapsedGameTime.TotalMilliseconds)              
+
         match List.head commits with
         | GrowingCommit p, t ->
             if timesofar t > 75.0
@@ -103,12 +111,25 @@ module Repo =
                 then (growingCommit (p.X + 9) p.Y, 0.0) :: commits
                 else List.map(fun (c, _) -> c, timesofar t) commits
 
+    /// Pops all commits in a list that are "off screen".
+    let pop (gametime:GameTime) commits = 
+        let timesofar time = time + (gametime.ElapsedGameTime.TotalMilliseconds)    
+
+        Seq.map(fun ((c:Commit), (t:float)) ->
+            if (revert c).X < -20 then false, c, t
+            else true, c, t
+        ) commits
+        |> Seq.filter(fun (keepme, c, t) -> keepme)
+        |> Seq.map(fun (keepme, c, t) -> c, t)
+        |> List.ofSeq
+
+
     /// Moves all the commits on a branch and pushes a new one onto the head and
     /// pops one at the far end of the tail (off screen).
     let moveBranch gametime branch = 
         let commits = 
             Seq.map (moveCommit gametime) branch.Commits
-            |> List.ofSeq
+            |> (pop gametime)
             |> (push gametime)
         { branch with Commits = commits }
       
