@@ -2,6 +2,7 @@
 
 open Xna
 open Microsoft.Xna.Framework
+open Movement
 
 /// Each 'tile' in the repository represents a commit.
 type Commit =     
@@ -23,6 +24,8 @@ type Repository = {
 
 [<RequireQualifiedAccess>]
 module Repo =     
+
+    let private updatetime = 75.0
 
     /// Creates a new commit in the 'growing' state.
     let growingCommit x y = GrowingCommit(point x y)
@@ -81,7 +84,7 @@ module Repo =
 
         let timesofar = time + (gametime.ElapsedGameTime.TotalMilliseconds)
 
-        if timesofar > 75.0 then 
+        if timesofar > updatetime then 
             let point, f = revertWithRecommit commit
             f (point.X - 9) point.Y, 0.0
         else 
@@ -90,25 +93,33 @@ module Repo =
     /// Pushes a new commit onto each of the branches at the head. Each new
     /// commit pushed is a different size to try and get a ripple effect.
     /// TODO: Needs some refactoring, lets move this matching and time counting out.
-    let push (gametime:GameTime) commits =      
+    let push (gametime:GameTime) movement commits =      
         let timesofar time = time + (gametime.ElapsedGameTime.TotalMilliseconds)              
+        
+        let applyMovement y = 
+            match movement with
+            | Some upOrDown ->
+                match upOrDown with
+                | Up -> y - 2
+                | Down -> y + 2
+            | None -> y
 
         match List.head commits with
         | GrowingCommit p, t ->
-            if timesofar t > 75.0
-                then (bigCommit (p.X + 11) p.Y, 0.0) :: commits
+            if timesofar t > updatetime
+                then (bigCommit (p.X + 11) (applyMovement p.Y), 0.0) :: commits
                 else List.map(fun (c, _) -> c, timesofar t) commits
         | BigCommit p, t ->
-            if timesofar t > 75.0
-                then (shrinkingCommit (p.X + 9) p.Y, 0.0) :: commits
+            if timesofar t > updatetime
+                then (shrinkingCommit (p.X + 9) (applyMovement p.Y), 0.0) :: commits
                 else List.map(fun (c, _) -> c, timesofar t) commits
         | ShrinkingCommit p, t ->
-            if timesofar t > 75.0
-                then (smallCommit (p.X + 7) p.Y, 0.0) :: commits
+            if timesofar t > updatetime
+                then (smallCommit (p.X + 7) (applyMovement p.Y), 0.0) :: commits
                 else List.map(fun (c, _) -> c, timesofar t) commits
         | SmallCommit p, t ->
-            if timesofar t > 75.0
-                then (growingCommit (p.X + 9) p.Y, 0.0) :: commits
+            if timesofar t > updatetime
+                then (growingCommit (p.X + 9) (applyMovement p.Y), 0.0) :: commits
                 else List.map(fun (c, _) -> c, timesofar t) commits
 
     /// Pops all commits in a list that are "off screen".
@@ -126,16 +137,16 @@ module Repo =
 
     /// Moves all the commits on a branch and pushes a new one onto the head and
     /// pops one at the far end of the tail (off screen).
-    let moveBranch gametime branch = 
+    let moveBranch gametime movement branch = 
         let commits = 
             Seq.map (moveCommit gametime) branch.Commits
             |> (pop gametime)
-            |> (push gametime)
+            |> (push gametime movement)
         { branch with Commits = commits }
       
     /// Moves all the branches in a repo.  
-    let moveRepo repo gametime = 
-        { repo with Branches = List.map (moveBranch gametime) repo.Branches }
+    let moveRepo gametime movement repo =         
+        { repo with Branches = List.map (moveBranch gametime movement) repo.Branches }
 
     /// Draw a single commit to a spritebatch.
     let drawCommit spritebatch (gametime:GameTime) texture (commit, time) = 

@@ -51,6 +51,7 @@
   <ItemGroup>
     <None Include="App.config" />
     <Compile Include="Xna.fs" />
+    <Compile Include="Movement.fs" />
     <Compile Include="FsGame.fs" />
     <Compile Include="Repo.fs" />
     <Compile Include="GameState.fs" />

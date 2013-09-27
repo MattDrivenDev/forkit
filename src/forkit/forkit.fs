@@ -34,7 +34,10 @@ type forkit() as this =
         SpriteBatch.stop spritebatch
 
     let moveRepo gametime = 
-        gamestate <- { gamestate with Repo = Repo.moveRepo gamestate.Repo gametime }
+        let f repo = 
+            let movement = Movement.playerMovement()
+            Repo.moveRepo gametime movement repo
+        gamestate <- { gamestate with Repo = f gamestate.Repo }
 
     let drawRepo spritebatch gametime = 
         Repo.draw spritebatch gametime tile gamestate.Repo
